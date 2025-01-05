@@ -7,10 +7,11 @@ from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
 import google.generativeai as genai
 from langchain_google_genai import ChatGoogleGenerativeAI
+from io import BytesIO
 from docx import Document
 
 # API Key Fetching
-gemini_api_key = st.secrets.get("GOOGLE_API_KEY")
+gemini_api_key = st.secrets["GOOGLE_API_KEY"]
 if gemini_api_key is None:
     raise ValueError("GOOGLE_API_KEY not found in environment variables")
 genai.configure(api_key=gemini_api_key)
@@ -44,7 +45,7 @@ def get_vector(chunks):
 def conversation_chain():
     template = """
     You are the Teacher, help the students by answering the question asked, which are related to the document uploaded. The following are guidelines:
-    - Answer the question in 2500 words.
+    - Answer the question in 1000 words.
     - Draw diagrams using simple geometry.
     - Use the data from the document to answer the question.
     - Provide a small summary explaining the answer; the goal is to make students understand the 2500-word answer.
