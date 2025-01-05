@@ -10,7 +10,6 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import load_dotenv
 import os
 
-
 #API Key Fetching
 load_dotenv()
 gemini_api_key = os.getenv("GOOGLE_API_KEY")
@@ -47,7 +46,11 @@ def get_vector(chunks):
 #Convo Chain
 def conversation_chain():
     template = """
-    Answer the asked question in detail.
+    Your the Teacher, help the students by answering the question asked, which are related to the document uploaded.The following is guidelines.
+    -Answer the question in 2500 words.
+    -Draw diagrams using simple geomertry.
+    -Use the data from the document to answer the question.
+    -Provide a small summary of explaination of the answer; the goal is to make students understand the 2500 words answer.
     Context: \n{context}\n
     Question: \n{question}\n
     Answer:
@@ -72,8 +75,8 @@ def user_question(question, db, chain, raw_text):
 #Main
 def main():
     # Set the page configuration
-    st.set_page_config(page_title="RAG Application", page_icon="🤖", layout="wide")
-    st.header("RAG Application")
+    st.set_page_config(page_title="Learn AI 😊", page_icon="🙂‍↔️", layout="wide")
+    st.header("Learn AI 😊")
 
     # Initialize session state variables specific to this page
     if "messages_chatbot_2" not in st.session_state:
@@ -95,7 +98,6 @@ def main():
             else:
                 with st.spinner("Processing..."):
                     raw_text = get_pdf_text(pdf_docs)
-                        
                     chunks = get_text_chunks(raw_text)
                     vector_store = get_vector(chunks)
                     chain, _ = conversation_chain()
