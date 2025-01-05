@@ -9,15 +9,17 @@ import google.generativeai as genai
 from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import load_dotenv
 import os
+from io import BytesIO
+from docx import Document
 
-#API Key Fetching
+# API Key Fetching
 load_dotenv()
 gemini_api_key = os.getenv("GOOGLE_API_KEY")
 if gemini_api_key is None:
     raise ValueError("GOOGLE_API_KEY not found in environment variables")
 genai.configure(api_key=gemini_api_key)
 
-#Pdf to Text
+# PDF to Text
 def get_pdf_text(pdf_docs):
     text = ""
     for pdf in pdf_docs:
@@ -26,7 +28,7 @@ def get_pdf_text(pdf_docs):
             text += page.extract_text()
     return text
 
-#text to chunk
+# Text to Chunk
 def get_text_chunks(raw_text):
     text_splitter = CharacterTextSplitter(
         separator="\n",
@@ -35,22 +37,21 @@ def get_text_chunks(raw_text):
     )
     return text_splitter.split_text(raw_text)
 
-#Chunks to Embeddings
+# Chunks to Embeddings
 def get_vector(chunks):
     if not chunks:
         return None
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", api_key=gemini_api_key)
     return FAISS.from_texts(texts=chunks, embedding=embeddings)
 
-
-#Convo Chain
+# Convo Chain
 def conversation_chain():
     template = """
-    Your the Teacher, help the students by answering the question asked, which are related to the document uploaded.The following is guidelines.
-    -Answer the question in 2500 words.
-    -Draw diagrams using simple geomertry.
-    -Use the data from the document to answer the question.
-    -Provide a small summary of explaination of the answer; the goal is to make students understand the 2500 words answer.
+    You are the Teacher, help the students by answering the question asked, which are related to the document uploaded. The following are guidelines:
+    - Answer the question in 2500 words.
+    - Draw diagrams using simple geometry.
+    - Use the data from the document to answer the question.
+    - Provide a small summary explaining the answer; the goal is to make students understand the 2500-word answer.
     Context: \n{context}\n
     Question: \n{question}\n
     Answer:
@@ -59,8 +60,7 @@ def conversation_chain():
     prompt = PromptTemplate(template=template, input_variables=["context", "question"])
     return load_qa_chain(model_instance, chain_type="stuff", prompt=prompt), model_instance
 
-
-#User Question
+# User Question
 def user_question(question, db, chain, raw_text):
     if db is None:
         return "Please upload and process a PDF first."
@@ -72,10 +72,25 @@ def user_question(question, db, chain, raw_text):
     )
     return response.get("output_text")
 
-#Main
+# Save Conversation to Word Document
+def save_conversation_to_docx(messages):
+    doc = Document()
+    doc.add_heading("Conversation", level=1)
+
+    for message in messages:
+        role = "User" if message["role"] == "user" else "Assistant"
+        doc.add_heading(f"{role}:", level=2)
+        doc.add_paragraph(message["content"])
+
+    byte_stream = BytesIO()
+    doc.save(byte_stream)
+    byte_stream.seek(0)
+    return byte_stream
+
+# Main
 def main():
     # Set the page configuration
-    st.set_page_config(page_title="Learn AI 😊", page_icon="🙂‍↔️", layout="wide")
+    st.set_page_config(page_title="Learn AI 😊", page_icon=":books:", layout="wide")
     st.header("Learn AI 😊")
 
     # Initialize session state variables specific to this page
@@ -89,7 +104,7 @@ def main():
         st.session_state.raw_text_chatbot_2 = None
         
     with st.sidebar:
-        st.subheader("Upload Your PDF's")
+        st.subheader("Upload Your PDFs")
         pdf_docs = st.file_uploader("Choose PDF files", accept_multiple_files=True, type="pdf")
 
         if st.button("Process PDF"):
@@ -107,7 +122,10 @@ def main():
                         st.session_state.chain_chatbot_2 = chain
                         st.session_state.raw_text_chatbot_2 = raw_text
                         st.success("PDF processed successfully.")  
-    
+
+        # Provide a download button for the conversation
+        
+
     for message in st.session_state.messages_chatbot_2:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
@@ -124,9 +142,17 @@ def main():
             if response:
                 st.session_state.messages_chatbot_2.append({"role": "assistant", "content": response})
                 with st.chat_message("assistant"):
-                    st.markdown(response)                            
-                                
-                                
+                    st.markdown(response)
+                    
+        if st.session_state.messages_chatbot_2:
+                docx_file = save_conversation_to_docx(st.session_state.messages_chatbot_2)
+                st.download_button(
+                label="Download Conversation as .docx",
+                data=docx_file,
+                file_name="conversation.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )               
+                         
+
 if __name__ == '__main__':
     main()
-                                      
